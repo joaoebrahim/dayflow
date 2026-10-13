@@ -1,0 +1,23 @@
+@import "tailwindcss";
+
+/* Modo escuro controlado pela classe .dark no <html> */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+html, body, #root { min-height: 100%; }
+body { @apply bg-slate-50 text-slate-900 dark:bg-[#0b0f17] dark:text-slate-100 antialiased; }
+
+/* Inputs de horário legíveis no modo escuro */
+.dark input[type="time"] { color-scheme: dark; }
+
+/* Padrão listrado das janelas livres */
+.free-stripes {
+  background-image: repeating-linear-gradient(
+    135deg,
+    rgb(16 185 129 / 0.16) 0 8px,
+    rgb(16 185 129 / 0.06) 8px 16px
+  );
+}
