@@ -11,8 +11,11 @@
  * - Um dia vai de `wake` (acordar) até `sleep` (dormir). Se `sleep` for
  *   menor ou igual a `wake`, entende-se que é depois da meia-noite
  *   (ex.: acordar 07:30, dormir 00:30 → fim do dia = 24h30 = 1470 min).
- * - Um bloco cujo `end` é menor ou igual ao `start` atravessa a
+ * - Um bloco cujo `end` é menor que o `start` atravessa a
  *   meia-noite (ex.: 23:00–01:00).
+ * - Um bloco que começa antes de `wake` mas cabe no trecho do dia depois
+ *   da meia-noite é lido como madrugada do dia seguinte (ex.: acordar
+ *   07:30, dormir 01:30, bloco 00:15–01:00 → 1455–1500 min).
  */
 
 export const MINUTES_PER_DAY = 24 * 60
@@ -58,11 +61,20 @@ export function dayBounds(wake, sleep) {
  * Se o fim for menor que o início, o bloco termina no dia seguinte.
  * Início igual ao fim = duração zero (não ocupa tempo). Antes isso virava
  * um bloco de 24h e zerava o tempo livre do dia.
+ *
+ * Com `bounds` ({ start, end } de dayBounds), um bloco que começa antes de
+ * acordar mas cujo início cai antes da hora de dormir quando somado 24h é
+ * tratado como depois da meia-noite: o intervalo inteiro avança um dia.
+ * Sem isso, um bloco às 00:15 num dia que vai até 01:30 era descartado.
  */
-export function blockToInterval(block) {
-  const start = toMinutes(block.start)
+export function blockToInterval(block, bounds) {
+  let start = toMinutes(block.start)
   let end = toMinutes(block.end)
   if (end < start) end += MINUTES_PER_DAY
+  if (bounds && start < bounds.start && start + MINUTES_PER_DAY < bounds.end) {
+    start += MINUTES_PER_DAY
+    end += MINUTES_PER_DAY
+  }
   return { start, end }
 }
 
@@ -127,15 +139,17 @@ export function transitInterval(fixedIntervals, homeArrival, dayStart) {
 
 /**
  * Pares de blocos FIXOS que se sobrepõem — útil para avisar o usuário.
- * Devolve [[blocoA, blocoB], ...].
+ * Passe o `day` ({ wake, sleep }) para que blocos depois da meia-noite
+ * sejam comparados no lugar certo. Devolve [[blocoA, blocoB], ...].
  */
-export function findOverlaps(blocks) {
+export function findOverlaps(blocks, day) {
+  const bounds = day ? dayBounds(day.wake, day.sleep) : undefined
   const fixed = blocks.filter((b) => b.kind === 'fixed')
   const pairs = []
   for (let i = 0; i < fixed.length; i++) {
     for (let j = i + 1; j < fixed.length; j++) {
-      const a = blockToInterval(fixed[i])
-      const b = blockToInterval(fixed[j])
+      const a = blockToInterval(fixed[i], bounds)
+      const b = blockToInterval(fixed[j], bounds)
       if (a.start < b.end && b.start < a.end) pairs.push([fixed[i], fixed[j]])
     }
   }
@@ -147,20 +161,21 @@ export function findOverlaps(blocks) {
  * Devolve { [blockId]: [{ code, message }] } só para blocos com aviso.
  *
  * - zero:      início igual ao fim (não conta)
- * - overnight: termina no dia seguinte (pode ser intencional, ex.: plantão)
+ * - overnight: atravessa a meia-noite (pode ser intencional, ex.: plantão)
  * - outside:   fica totalmente fora do período acordado (não conta)
  * - partial:   parte do bloco fica fora do período acordado
  */
 export function findBlockIssues(day) {
-  const { start: dayStart, end: dayEnd } = dayBounds(day.wake, day.sleep)
+  const bounds = dayBounds(day.wake, day.sleep)
+  const { start: dayStart, end: dayEnd } = bounds
   const issues = {}
   for (const b of day.blocks ?? []) {
     const list = []
-    const i = blockToInterval(b)
+    const i = blockToInterval(b, bounds)
     if (i.end === i.start) {
       list.push({ code: 'zero', message: 'Início e fim iguais: o bloco não conta.' })
     } else {
-      if (i.end > MINUTES_PER_DAY) list.push({ code: 'overnight', message: 'Termina no dia seguinte.' })
+      if (i.start < MINUTES_PER_DAY && i.end > MINUTES_PER_DAY) list.push({ code: 'overnight', message: 'Termina no dia seguinte.' })
       const clipped = clipInterval(i, dayStart, dayEnd)
       if (!clipped) list.push({ code: 'outside', message: 'Fora do horário acordado: não conta.' })
       else if (clipped.end - clipped.start < i.end - i.start) {
@@ -203,10 +218,12 @@ export function findBlockIssues(day) {
  */
 export function computeFreeWindows(day, options = {}) {
   const minMinutes = options.minMinutes ?? 15
-  const { start: dayStart, end: dayEnd } = dayBounds(day.wake, day.sleep)
+  const bounds = dayBounds(day.wake, day.sleep)
+  const { start: dayStart, end: dayEnd } = bounds
   const blocks = day.blocks ?? []
+  const toInterval = (b) => blockToInterval(b, bounds)
 
-  const fixed = blocks.filter((b) => b.kind === 'fixed').map(blockToInterval)
+  const fixed = blocks.filter((b) => b.kind === 'fixed').map(toInterval)
   const transit = transitInterval(fixed, day.homeArrival, dayStart)
 
   const busy = mergeIntervals(transit ? [...fixed, transit] : fixed)
@@ -216,7 +233,7 @@ export function computeFreeWindows(day, options = {}) {
   // Fim do último compromisso (bloco fixo ou deslocamento) dentro do dia.
   const lastBusyEnd = busy.length ? busy[busy.length - 1].end : null
 
-  const freeLabels = blocks.filter((b) => b.kind === 'free').map((b) => ({ ...b, ...blockToInterval(b) }))
+  const freeLabels = blocks.filter((b) => b.kind === 'free').map((b) => ({ ...b, ...toInterval(b) }))
 
   const windows = gapsBetween(busy, dayStart, dayEnd)
     .filter((g) => g.end - g.start >= minMinutes)
@@ -255,7 +272,8 @@ export function buildTimeline(day, options = {}) {
 
   for (const b of day.blocks ?? []) {
     if (b.kind !== 'fixed') continue
-    const clipped = clipInterval(blockToInterval(b), result.dayStart, result.dayEnd)
+    const bounds = { start: result.dayStart, end: result.dayEnd }
+    const clipped = clipInterval(blockToInterval(b, bounds), result.dayStart, result.dayEnd)
     if (clipped) items.push({ type: 'fixed', ...clipped, block: b })
   }
   if (result.transit) {

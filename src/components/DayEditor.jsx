@@ -32,7 +32,7 @@ export default function DayEditor({ day, onChange, minWindowMinutes }) {
   }
 
   const result = computeFreeWindows(day, { minMinutes: minWindowMinutes })
-  const overlaps = findOverlaps(day.blocks)
+  const overlaps = findOverlaps(day.blocks, day)
 
   return (
     <div className="space-y-4">

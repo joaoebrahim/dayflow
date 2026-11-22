@@ -204,7 +204,7 @@ COLORS.livre     // '#10b981'
 5. Janelas menores que a **janela mínima** (padrão 15 min, configurável em Dados) são ignoradas
 6. A janela entre o último compromisso e a hora de dormir vem marcada com `afterLastFixed: true`
 
-**Limitação conhecida:** um bloco que *começa* depois da meia-noite (ex.: `00:15`) é lido como madrugada do mesmo dia, antes de acordar, e é descartado.
+7. Um bloco que *começa* depois da meia-noite (ex.: `00:15`) conta como madrugada do dia seguinte quando cabe antes da hora de dormir (acordar `07:30`, dormir `01:30`). Se não couber, é tratado como antes de acordar e não conta
 
 ## Formato dos dados (JSON)
 
