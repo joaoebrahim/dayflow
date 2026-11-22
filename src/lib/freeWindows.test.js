@@ -3,6 +3,8 @@ import {
   toMinutes,
   fromMinutes,
   formatDuration,
+  blockToInterval,
+  dayBounds,
   mergeIntervals,
   gapsBetween,
   findOverlaps,
@@ -199,5 +201,78 @@ describe('buildTimeline', () => {
   it('ordena fixos, deslocamento e janelas livres', () => {
     const t = buildTimeline(createDefaultState().week[1])
     expect(t.items.map((i) => i.type)).toEqual(['fixed', 'fixed', 'fixed', 'fixed', 'fixed', 'transit', 'free'])
+  })
+})
+
+describe('blocos que começam depois da meia-noite', () => {
+  const day = (blocks, extra = {}) => ({ wake: '07:30', sleep: '01:30', blocks, ...extra })
+
+  it('blockToInterval avança o bloco um dia quando ele cabe antes de dormir', () => {
+    const bounds = dayBounds('07:30', '01:30')
+    expect(blockToInterval(fixed('Ronda', '00:15', '01:00'), bounds)).toEqual({ start: 1455, end: 1500 })
+    // sem limites do dia, comportamento antigo
+    expect(blockToInterval(fixed('Ronda', '00:15', '01:00'))).toEqual({ start: 15, end: 60 })
+  })
+
+  it('bloco às 00:15 ocupa tempo em vez de ser descartado', () => {
+    const r = computeFreeWindows(day([fixed('Ronda', '00:15', '01:00')]))
+    expect(r.busy).toEqual([{ start: 1455, end: 1500 }])
+    expect(r.windows.map((w) => [w.startLabel, w.endLabel])).toEqual([
+      ['07:30', '00:15'],
+      ['01:00', '01:30'],
+    ])
+    expect(r.totalFreeMinutes).toBe(18 * 60 - 45)
+  })
+
+  it('bloco depois da meia-noite que passa da hora de dormir é recortado', () => {
+    const r = computeFreeWindows(day([fixed('Ronda', '01:00', '03:00')]))
+    expect(r.busy).toEqual([{ start: 1500, end: 1530 }])
+    expect(r.windows.at(-1)).toMatchObject({ startLabel: '07:30', endLabel: '01:00' })
+  })
+
+  it('junta com bloco que atravessa a meia-noite', () => {
+    const r = computeFreeWindows(day([fixed('Turno', '22:00', '00:30'), fixed('Volta', '00:30', '01:00')]))
+    expect(r.busy).toEqual([{ start: 1320, end: 1500 }])
+    expect(r.windows.at(-1)).toMatchObject({ startLabel: '01:00', endLabel: '01:30', afterLastFixed: true })
+  })
+
+  it('chegada em casa depois do bloco da madrugada vira deslocamento', () => {
+    const r = computeFreeWindows(day([fixed('Ronda', '00:00', '00:45')], { homeArrival: '01:10' }))
+    expect(r.transit).toEqual({ start: 1485, end: 1510 })
+    expect(r.windows.at(-1)).toMatchObject({ startLabel: '01:10', endLabel: '01:30', minutes: 20 })
+  })
+
+  it('bloco antes de acordar que não cabe na madrugada continua fora do dia', () => {
+    const r = computeFreeWindows(day([fixed('Cedo', '05:00', '06:00')]))
+    expect(r.busy).toEqual([])
+    expect(findBlockIssues(day([fixed('Cedo', '05:00', '06:00')]))).toEqual({
+      Cedo: [{ code: 'outside', message: 'Fora do horário acordado: não conta.' }],
+    })
+  })
+
+  it('dia que termina antes da meia-noite não puxa blocos da madrugada', () => {
+    const r = computeFreeWindows({ wake: '07:00', sleep: '23:00', blocks: [fixed('Madrugada', '00:15', '01:00')] })
+    expect(r.busy).toEqual([])
+  })
+
+  it('bloco depois da meia-noite dentro do dia não gera aviso', () => {
+    expect(findBlockIssues(day([fixed('Ronda', '00:15', '01:00')]))).toEqual({})
+  })
+
+  it('bloco livre depois da meia-noite nomeia a janela da madrugada', () => {
+    const r = computeFreeWindows(day([fixed('Aula', '19:00', '00:00'), free('Leitura', '00:15', '01:00')]))
+    expect(r.windows.at(-1)).toMatchObject({ startLabel: '00:00', endLabel: '01:30', label: 'Leitura' })
+  })
+
+  it('detecta sobreposição entre bloco noturno e bloco da madrugada', () => {
+    const a = fixed('Turno', '23:00', '00:30')
+    const b = fixed('Ronda', '00:15', '01:00')
+    expect(findOverlaps([a, b], { wake: '07:30', sleep: '01:30' })).toEqual([[a, b]])
+  })
+
+  it('timeline mostra o bloco da madrugada no fim do dia', () => {
+    const t = buildTimeline(day([fixed('Aula', '08:00', '12:00'), fixed('Ronda', '00:15', '01:00')]))
+    expect(t.items.map((i) => i.type)).toEqual(['free', 'fixed', 'free', 'fixed', 'free'])
+    expect(t.items[3]).toMatchObject({ start: 1455, end: 1500 })
   })
 })
