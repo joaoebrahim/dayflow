@@ -2,12 +2,14 @@
 
 Planejador pessoal de rotina. **Etapa 1:** rotina semanal + cálculo das janelas livres.
 
-[![CI](https://github.com/joaog/dayflow/actions/workflows/ci.yml/badge.svg)](https://github.com/joaog/dayflow/actions/workflows/ci.yml)
-[![Deploy](https://github.com/joaog/dayflow/actions/workflows/deploy.yml/badge.svg)](https://github.com/joaog/dayflow/actions/workflows/deploy.yml)
+[![CI](https://github.com/joaoebrahim/dayflow/actions/workflows/ci.yml/badge.svg)](https://github.com/joaoebrahim/dayflow/actions/workflows/ci.yml)
+[![Deploy](https://github.com/joaoebrahim/dayflow/actions/workflows/deploy.yml/badge.svg)](https://github.com/joaoebrahim/dayflow/actions/workflows/deploy.yml)
 
 ## Demo
 
-🔗 **https://joaog.github.io/dayflow/**
+🔗 **https://joaoebrahim.github.io/dayflow/**
+
+📱 **Instalar no celular:** abra o link acima no Chrome (Android) e toque em *Instalar app*, ou no Safari (iPhone) use *Compartilhar → Adicionar à Tela de Início*. Depois de instalado, o app abre em tela cheia e funciona offline.
 
 ## Rodar localmente
 
@@ -247,7 +249,7 @@ npm run test:watch # modo watch
 ### Desenvolvimento
 
 ```bash
-git clone https://github.com/joaog/dayflow.git
+git clone https://github.com/joaoebrahim/dayflow.git
 cd dayflow
 npm install
 npm run dev
@@ -274,7 +276,7 @@ npm run dev
 - [ ] Notificações de janelas livres
 - [ ] Modo "foco" com timer Pomodoro nas janelas
 - [ ] Sincronização via GitHub Gist / Firebase
-- [ ] PWA (service worker + manifest)
+- [x] PWA (service worker + manifest) — instalável no celular e funciona offline
 - [ ] Temas customizados
 - [ ] Tradução EN/ES
 
@@ -284,7 +286,7 @@ O deploy é automático via GitHub Actions no push para `main`:
 
 1. Build com `vite build` → gera `dist/`
 2. Deploy do conteúdo de `dist/` para `gh-pages`
-3. Disponível em `https://joaog.github.io/dayflow/`
+3. Disponível em `https://joaoebrahim.github.io/dayflow/`
 
 Configuração em `.github/workflows/deploy.yml`.
 
