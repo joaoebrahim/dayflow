@@ -2,12 +2,12 @@
 
 Planejador pessoal de rotina. **Etapa 1:** rotina semanal + cálculo das janelas livres.
 
-[![CI](https://github.com/joaog/dayflow/actions/workflows/ci.yml/badge.svg)](https://github.com/joaog/dayflow/actions/workflows/ci.yml)
-[![Deploy](https://github.com/joaog/dayflow/actions/workflows/deploy.yml/badge.svg)](https://github.com/joaog/dayflow/actions/workflows/deploy.yml)
+[![CI](https://github.com/joaoebrahim/dayflow/actions/workflows/ci.yml/badge.svg)](https://github.com/joaoebrahim/dayflow/actions/workflows/ci.yml)
+[![Deploy](https://github.com/joaoebrahim/dayflow/actions/workflows/deploy.yml/badge.svg)](https://github.com/joaoebrahim/dayflow/actions/workflows/deploy.yml)
 
 ## Demo
 
-🔗 **https://joaog.github.io/dayflow/**
+🔗 **https://joaoebrahim.github.io/dayflow/**
 
 ## Rodar localmente
 
@@ -247,7 +247,7 @@ npm run test:watch # modo watch
 ### Desenvolvimento
 
 ```bash
-git clone https://github.com/joaog/dayflow.git
+git clone https://github.com/joaoebrahim/dayflow.git
 cd dayflow
 npm install
 npm run dev
@@ -284,7 +284,7 @@ O deploy é automático via GitHub Actions no push para `main`:
 
 1. Build com `vite build` → gera `dist/`
 2. Deploy do conteúdo de `dist/` para `gh-pages`
-3. Disponível em `https://joaog.github.io/dayflow/`
+3. Disponível em `https://joaoebrahim.github.io/dayflow/`
 
 Configuração em `.github/workflows/deploy.yml`.
 
